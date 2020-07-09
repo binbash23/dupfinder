@@ -1,0 +1,355 @@
+#
+# 20200623 jens heine & dennis brossat & benjamin heine
+#
+#
+#set -x
+
+ROOT_PATH=''
+PLAIN_FILE_LIST_FILE='plainfilelist.txt'
+HASH_CMD='md5sum'
+HASHDATABASE_FILENAME='hashfilelist.txt'
+HASHDATABASE_FILENAME_TMP='hashfilelist.txt.tmp'
+DUPLICATES_FILENAME='duplicatefiles.txt'
+DEBUG=0
+VERSION="20200704"
+SKIP_FILES_THAT_ALREADY_HAVE_A_HASH="0"
+USAGE_INFO_TEXT="
+
+	dupfinder by Jens Heine <binbash@gmx.net> 2020
+	             and Dennis Brossat
+		     and Benjamin Heine
+
+USAGE
+
+	dupfinder OPTIONS
+   
+OPTIONS
+	-a Search in path for duplicates (requires -r)
+	-c Calculate hashes for files in plain filelist file and add them to hash database
+	-C Create duplicate files file from hash database
+	-d Verbose mode
+	-D Show contents of duplicates file
+	-f search root path for files and create plain files file (requires -r)
+	-h Show usage information
+	-H Show contents of hash database
+	-p Create plain files filelist (requires -r)
+	-P Show contents of plain filelist file
+	-r PATH set root path
+	-R Delete filehash database
+	-s Show statistics of database
+	-S Skip file hash calculation for files that are already in hash database
+	-v Show program version
+
+"
+
+
+#
+# Functions
+#
+function logInfo() {
+	if [ $DEBUG -eq 1 ]; then
+		echo "> $1"
+	fi
+}
+
+# Count and print lines in given file
+function countEntriesInFile() {
+	[ ! "$1" ] && {
+		echo 0
+	        return
+	}
+	if [ ! -r "${1}" ];then
+		echo 0
+		return
+	fi
+	FILE_COUNT=`wc -l ${1}|cut -d " " -f1`
+	echo $FILE_COUNT
+}
+
+function countFileSizeInBytes() {
+	[ ! "$1" ] && {
+                echo 0
+                return
+        }
+        if [ ! -r "${1}" ];then
+                echo 0
+                return
+        fi
+	FILE_SIZE=`wc -c ${1}|cut -d " " -f1`
+	let FILE_SIZE="${FILE_SIZE}"/1024
+	echo "$FILE_SIZE Kb"
+}
+
+function createPlainFileList() {
+	[ "" == "$1" ] && return
+	[ "" == "${PLAIN_FILE_LIST_FILE}" ] && return
+	echo ""> ${PLAIN_FILE_LIST_FILE}
+	logInfo "Creating plain file list for root folder \"${ROOT_PATH}\""
+	find ${ROOT_PATH} -type f 2>/dev/null > ${PLAIN_FILE_LIST_FILE}
+	logInfo "Found `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"` file(s)."
+	logInfo "Plain file list filesize: `countFileSizeInBytes "${PLAIN_FILE_LIST_FILE}" bytes`"
+}
+
+function createHash() {
+	FILENAME="$1"
+	[ "" == "$FILENAME" ] && return
+	[ ! -r "$FILENAME" ] && return
+	HASH=`$HASH_CMD "${FILENAME}"`
+	echo "$HASH"
+}
+
+function deleteFileHashDatabase() {
+	logInfo "Deleting database"
+	[ "" == "${HASHDATABASE_FILENAME}" ] && return
+	logInfo "Deleting ${HASHDATABASE_FILENAME}"
+	rm "${HASHDATABASE_FILENAME}"
+#	touch "${HASHDATABASE_FILENAME}"
+	[ -f "${PLAIN_FILE_LIST_FILE}" ] && {
+		logInfo "Deleting ${PLAIN_FILE_LIST_FILE}"
+		rm "${PLAIN_FILE_LIST_FILE}"
+}
+	[ -f "${DUPLICATES_FILENAME}" ] && {
+		logInfo "Deleting ${DUPLICATES_FILENAME}"
+		rm "${DUPLICATES_FILENAME}"
+}
+	logInfo "Done."
+}
+
+function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
+	FILES_TO_HASH=`countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`
+	FILES_SKIPPED_COUNT=0
+	[ "$FILES_TO_HASH" -eq 0 ] && {
+		logInfo "0 files in filehash database. No files to calculate hashes for."
+		return
+	}
+	logInfo "Calculating hashes for ${FILES_TO_HASH} files to filehashdatabase..."
+	START_SECONDS=`date +%s`
+	FILES_DONE=0
+	echo -n "Files done: "
+	tput sc
+	while read LINE;do
+		CURRENTFILENAME="${LINE}"
+		[ "${SKIP_FILES_THAT_ALREADY_HAVE_A_HASH}" -eq 1 ] && {
+			grep "${CURRENTFILENAME}" "${HASHDATABASE_FILENAME}" >/dev/null 2>&1
+			RESULT=$?
+			[ $RESULT -eq 0 ] && {
+				let FILES_SKIPPED_COUNT=$FILES_SKIPPED_COUNT+1
+				logInfo "File hash already exists for: ${CURRENTFILENAME}"
+			        FILES_DONE=$((FILES_DONE+1))
+				echo -n "${FILES_DONE} / ${FILES_TO_HASH}"
+				tput rc
+				continue
+			}
+		}
+		CURRENTHASH=`createHash "${CURRENTFILENAME}"`
+		FILES_DONE=$((FILES_DONE+1))
+		echo "${CURRENTHASH}" >> "${HASHDATABASE_FILENAME}"
+#		echo -n "."
+		echo -n "${FILES_DONE} / ${FILES_TO_HASH}"
+		tput rc
+	done < ${PLAIN_FILE_LIST_FILE}
+	echo
+	END_SECONDS=`date +%s`
+	SECONDS_NEEDED=`echo $END_SECONDS - $START_SECONDS | bc`
+	HASHES_PER_SECOND=`echo $FILES_TO_HASH / $SECONDS_NEEDED | bc`
+	let FILES_SKIPPED_PERCENT=100*$FILES_SKIPPED_COUNT/$FILES_DONE
+	echo "Files skipped : $FILES_SKIPPED_COUNT (${FILES_SKIPPED_PERCENT}%)" 
+	echo "Time elapsed  : $SECONDS_NEEDED seconds"
+	echo "Hashes/second : $HASHES_PER_SECOND"
+	sortFileHashDatabase
+	removeDuplicateFileHashDatabaseEntries
+	logInfo "Done."
+}
+
+function sortFileHashDatabase() {
+	logInfo "Sorting `countEntriesInFile "${HASHDATABASE_FILENAME}"` files in filehash database..."
+	#logInfo "Sorting FileHashDatabase ${HASHDATABASE_FILENAME} into ${HASHDATABASE_FILENAME_TMP}..."
+	cat "${HASHDATABASE_FILENAME}" | sort > "${HASHDATABASE_FILENAME_TMP}"
+	#logInfo "Moving ${HASHDATABASE_FILENAME_TMP} to ${HASHDATABASE_FILENAME}"
+	mv "${HASHDATABASE_FILENAME_TMP}" "${HASHDATABASE_FILENAME}"
+	logInfo "Sorting FileHashDatabase done."
+}
+
+# Works only with sorted filehashdatabase
+function createDuplicateFilelist() {
+	logInfo "Searching duplicates in database..."
+	uniq -d -w 32 "${HASHDATABASE_FILENAME}" "${DUPLICATES_FILENAME}"
+	logInfo "Done."
+}
+
+function showDuplicates() {
+	logInfo "Show duplicate files:"
+	cat "${DUPLICATES_FILENAME}"
+	echo "Found `countEntriesInFile ${DUPLICATES_FILENAME} duplicates.`"
+}
+
+# Works only with sorted filehashdatabase
+function removeDuplicateFileHashDatabaseEntries() {
+	logInfo "Removing duplicate file hash entries in database..."
+	logInfo "Entries before cleanup: `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
+	cat "${HASHDATABASE_FILENAME}" | uniq > "${HASHDATABASE_FILENAME_TMP}"
+	mv "${HASHDATABASE_FILENAME_TMP}" "${HASHDATABASE_FILENAME}"
+	logInfo "Entries after  cleanup: `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
+}
+
+function showUsage() {
+	echo "$USAGE_INFO_TEXT"
+}
+
+function showHelpText() {
+	echo
+	echo "Wrong usage. Use -h for help."
+	echo
+}
+
+function showVersion() {
+	echo
+	echo "	dupfinder version: ${VERSION}"
+	echo
+	echo "	Jens Heine <binbash@gmx.net>"
+	echo "	and Dennis Brossat"
+	echo "	and Benjamin Heine"
+	echo
+}
+
+function showStats() {
+	echo
+	echo "Statistics"
+	echo
+	echo -e "Files in filehash database : `countEntriesInFile "${HASHDATABASE_FILENAME}"`\t(`countFileSizeInBytes "${HASHDATABASE_FILENAME}"`)\tmodified: `stat -c %y "${HASHDATABASE_FILENAME}"`"
+	echo -e "Files in plain file list   : `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`\t(`countFileSizeInBytes "${PLAIN_FILE_LIST_FILE}"`)\tmodified: `stat -c %y "${PLAIN_FILE_LIST_FILE}"`"
+	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_FILENAME}"`\t(`countFileSizeInBytes "${DUPLICATES_FILENAME}"`)\tmodified `stat -c %y "${DUPLICATES_FILENAME}"`"
+	echo
+}
+
+function exitIfRootPathIsNotSet() {
+	# Check if the rootpath is set
+	if [ -z "$ROOT_PATH" ];then
+		echo "Error: root path is empty."
+		exit 1
+	fi
+}
+
+function printDuplicatesPercent() {
+	HASHES_COUNT=`countEntriesInFile "${HASHDATABASE_FILENAME}"`
+	DUPLICATES_COUNT=`countEntriesInFile "${DUPLICATES_FILENAME}"`
+	DUPLICATES_PERCENT=`echo "100 * $DUPLICATES_COUNT / $HASHES_COUNT" | bc`
+	echo "Found $DUPLICATES_COUNT duplicates in $HASHES_COUNT files (${DUPLICATES_PERCENT}%)."
+}
+
+
+########################################################################################################
+# Main
+########################################################################################################
+
+ARGUMENTS_EXIST=0
+while getopts "acCdDfhHpPr:RsSv" options; do
+	ARGUMENTS_EXIST=1
+	case "$options" in
+		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
+		   ;;
+		c) # Calculate hashes for files in plain files filelist
+		   ACTION="CALCULATE_HASHES_FOR_FILES_IN_PLAIN_FILELIST_FILE"
+		   ;;
+		C) # create duplicate files file
+		   ACTION="CREATE_DUPLICATES_FILE_FROM_FILEHASH_DATABASE"
+		   ;;
+		d) # Switch on verbose logging
+		   echo "> Verbose mode = ON"
+		   DEBUG=1
+		   ;;
+		D) echo "Show contents of duplicates file:"
+		   cat "${DUPLICATES_FILENAME}"
+		   echo "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_FILENAME}"`"
+		   exit 0
+		   ;;
+		f) ACTION="FIND_FILES_AND_CREATE_PLAIN_FILE_LIST"
+		   ;;
+		h) showUsage
+		   exit 0
+		   ;;
+		H) echo "Show contents of hashdatabase file:"
+		   cat "${HASHDATABASE_FILENAME}"
+		   echo "Files in filehash database : `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
+		   exit 0
+		   ;;
+		p) # Create plain files filelist
+		   ACTION="CREATE_PLAIN_FILES_FILELIST"
+		   ;;
+		P) echo "Show contents of plain filelist file:"
+		   cat "${PLAIN_FILE_LIST_FILE}"
+		   echo "Files in plain file list   : `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`"
+		   exit 0
+		   ;;
+		r) ROOT_PATH="${OPTARG}"
+		   ;;
+		R) # Delete filehashdatabase file
+		   ACTION="DELETE_FILEHASH_DATABASE_FILE"
+		   ;;
+		s) showStats
+		   exit 0
+		   ;;
+		S) # Set skip existing hash recalculation
+		   SKIP_FILES_THAT_ALREADY_HAVE_A_HASH=1
+		   ;;
+		v) ACTION="SHOW_VERSION"
+		   showVersion
+		   exit 0
+		   ;;
+		*) showHelpText
+		   exit 0
+		   ;;
+	esac
+done
+
+if [ "1" != "$ARGUMENTS_EXIST" ];then
+  showHelpText
+  exit 1
+fi
+
+case "${ACTION}" in
+	SEARCH_PATH_FOR_DUPLICATES)
+		exitIfRootPathIsNotSet
+		createPlainFileList ${ROOT_PATH}
+		calculateHashesForPlainfilesFileIntoFileHashDatabase
+		createDuplicateFilelist
+		printDuplicatesPercent
+#		showDuplicates
+		exit 0
+		;;
+	CREATE_PLAIN_FILES_FILELIST)
+		exitIfRootPathIsNotSet
+		createPlainFileList ${ROOT_PATH}
+		;;
+	CREATE_PLAIN_FILES_FILELIST)
+		exitIfRootPathIsNotSet
+		createPlainFileList ${ROOT_PATH}
+		exit 0
+		;;
+	CALCULATE_HASHES_FOR_FILES_IN_PLAIN_FILELIST_FILE)
+		calculateHashesForPlainfilesFileIntoFileHashDatabase
+		exit 0
+		;;
+	DELETE_FILEHASH_DATABASE_FILE)
+		echo "Delete filehash database? (y/Y)"
+		read X
+		[ "${X}" = "y" -o "${X}" = "Y" ] && {
+			deleteFileHashDatabase
+			echo "Database deleted."
+			exit 0
+		}
+		echo "Aborted."
+		exit 0
+		;;
+	CREATE_DUPLICATES_FILE_FROM_FILEHASH_DATABASE)
+		createDuplicateFilelist
+		printDuplicatesPercent
+		exit 0
+		;;
+esac
+
+exit 0
+
+
+
+
