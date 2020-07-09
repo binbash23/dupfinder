@@ -1,6 +1,9 @@
 #
-# 20200623 jens heine & dennis brossat & benjamin heine
+# 20200623 jens heine 
+#          dennis brossat
+#          benjamin heine
 #
+# dupfinder - identify duplicate files
 #
 #set -x
 
