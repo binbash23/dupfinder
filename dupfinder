@@ -16,8 +16,8 @@ SKIP_FILES_THAT_ALREADY_HAVE_A_HASH="0"
 USAGE_INFO_TEXT="
 
 	dupfinder by Jens Heine <binbash@gmx.net> 2020
-	             and Dennis Brossat
-		     and Benjamin Heine
+	             and Dennis Brossat <dennis.brossat@email.de>
+		     and Benjamin Heine <benjaminheine@gmx.net>
 
 USAGE
 
