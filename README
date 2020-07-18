@@ -1,0 +1,13 @@
+# dupfinder
+
+Written by
+	Jens Heine <binbash@gmx.net>
+	Dennis Brossat <dennis.brossat@email.de>
+	Benjamin Heine <benjaminheine@gmx.net>
+
+Use dupfinder to find duplicate files in big archives of files.
+Dupfinder searches the given path for files, creates a hash database for
+all files and searches for files which have the same hash.
+
+Good Luck, Jens 
+
