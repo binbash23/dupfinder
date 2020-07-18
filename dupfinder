@@ -7,15 +7,19 @@
 #
 #set -x
 
-ROOT_PATH=''
-PLAIN_FILE_LIST_FILE='plainfilelist.txt'
-HASH_CMD='md5sum'
-HASHDATABASE_FILENAME='hashfilelist.txt'
-HASHDATABASE_FILENAME_TMP='hashfilelist.txt.tmp'
-DUPLICATES_FILENAME='duplicatefiles.txt'
+FILELIST_DB="filelist.db"
+FILEHASH_DB="filehash.db"
+FILES_WITH_HASH_DB="fileswithash.db"
+FILEHASH_DB_TMP="filehash.db.tmp"
+DUPLICATES_DB="duplicates.db"
+DUPLICATE_FILES_ARCHIVE_FOLDER="duplicates"
+COPY_DUPLICATES_SCRIPT="copy_dups_from_root_path_to_archive.sh"
+DELETE_DUPLICATES_FROM_ROOT_SCRIPT="delete_dups_from_root_path.sh"
+ROOT_PATH=""
+HASH_CMD="md5sum"
 DEBUG=0
-VERSION="20200704"
-SKIP_FILES_THAT_ALREADY_HAVE_A_HASH="0"
+VERSION="20200718"
+RECALC_EXISTING_HASHES="0"
 USAGE_INFO_TEXT="
 
 	dupfinder by Jens Heine <binbash@gmx.net> 2020
@@ -33,14 +37,15 @@ OPTIONS
 	-d Verbose mode
 	-D Show contents of duplicates file
 	-f search root path for files and create plain files file (requires -r)
+	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
 	-H Show contents of hash database
+	-n Calculate new hash for all files found, even if they exist in hash db
 	-p Create plain files filelist (requires -r)
 	-P Show contents of plain filelist file
 	-r PATH set root path
 	-R Delete filehash database
 	-s Show statistics of database
-	-S Skip file hash calculation for files that are already in hash database
 	-v Show program version
 
 "
@@ -85,12 +90,25 @@ function countFileSizeInBytes() {
 
 function createPlainFileList() {
 	[ "" == "$1" ] && return
-	[ "" == "${PLAIN_FILE_LIST_FILE}" ] && return
-	echo ""> ${PLAIN_FILE_LIST_FILE}
-	logInfo "Creating plain file list for root folder \"${ROOT_PATH}\""
-	find ${ROOT_PATH} -type f 2>/dev/null > ${PLAIN_FILE_LIST_FILE}
-	logInfo "Found `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"` file(s)."
-	logInfo "Plain file list filesize: `countFileSizeInBytes "${PLAIN_FILE_LIST_FILE}" bytes`"
+	[ "" == "${FILELIST_DB}" ] && return
+	echo ""> ${FILELIST_DB}
+	if [ ${RECALC_EXISTING_HASHES} -eq 1 ];then
+		logInfo "Creating full plain file list for root folder \"${ROOT_PATH}\""
+		find ${ROOT_PATH} -type f 2>/dev/null | sort > ${FILELIST_DB}
+	else
+		logInfo "Creating plain file list for new files in root folder \"${ROOT_PATH}\""
+		logInfo "Create file with filenames of existing files with hashes..."
+		cat ${FILEHASH_DB} | cut -d ' ' -f2- | sed 's/^ //g' | sort > ${FILES_WITH_HASH_DB}
+		logInfo "Creating file with files in path: ${ROOT_PATH}..."
+		find ${ROOT_PATH} -type f 2>/dev/null | sort > ${FILELIST_DB}.tmp
+		logInfo "Creating file with files in root path which have no hash..."
+		diff --new-line-format="%L" --old-line-format="" --unchanged-line-format="" ${FILES_WITH_HASH_DB} ${FILELIST_DB}.tmp > ${FILELIST_DB}
+		rm ${FILELIST_DB}.tmp
+		rm ${FILES_WITH_HASH_DB}
+	fi
+	logInfo "Filelist db: ${FILELIST_DB}"
+	logInfo "Found `countEntriesInFile "${FILELIST_DB}"` file(s)."
+	logInfo "Plain file list filesize: `countFileSizeInBytes "${FILELIST_DB}" bytes`"
 }
 
 function createHash() {
@@ -103,23 +121,22 @@ function createHash() {
 
 function deleteFileHashDatabase() {
 	logInfo "Deleting database"
-	[ "" == "${HASHDATABASE_FILENAME}" ] && return
-	logInfo "Deleting ${HASHDATABASE_FILENAME}"
-	rm "${HASHDATABASE_FILENAME}"
-#	touch "${HASHDATABASE_FILENAME}"
-	[ -f "${PLAIN_FILE_LIST_FILE}" ] && {
-		logInfo "Deleting ${PLAIN_FILE_LIST_FILE}"
-		rm "${PLAIN_FILE_LIST_FILE}"
-}
-	[ -f "${DUPLICATES_FILENAME}" ] && {
-		logInfo "Deleting ${DUPLICATES_FILENAME}"
-		rm "${DUPLICATES_FILENAME}"
-}
+	[ "" == "${FILEHASH_DB}" ] && return
+	logInfo "Deleting ${FILEHASH_DB}"
+	rm "${FILEHASH_DB}"
+	[ -f "${FILELIST_DB}" ] && {
+		logInfo "Deleting ${FILELIST_DB}"
+		rm "${FILELIST_DB}"
+	}
+	[ -f "${DUPLICATES_DB}" ] && {
+		logInfo "Deleting ${DUPLICATES_DB}"
+		rm "${DUPLICATES_DB}"
+	}
 	logInfo "Done."
 }
 
 function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
-	FILES_TO_HASH=`countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`
+	FILES_TO_HASH=`countEntriesInFile "${FILELIST_DB}"`
 	FILES_SKIPPED_COUNT=0
 	[ "$FILES_TO_HASH" -eq 0 ] && {
 		logInfo "0 files in filehash database. No files to calculate hashes for."
@@ -132,30 +149,25 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	tput sc
 	while read LINE;do
 		CURRENTFILENAME="${LINE}"
-		[ "${SKIP_FILES_THAT_ALREADY_HAVE_A_HASH}" -eq 1 ] && {
-			grep "${CURRENTFILENAME}" "${HASHDATABASE_FILENAME}" >/dev/null 2>&1
-			RESULT=$?
-			[ $RESULT -eq 0 ] && {
-				let FILES_SKIPPED_COUNT=$FILES_SKIPPED_COUNT+1
-				logInfo "File hash already exists for: ${CURRENTFILENAME}"
-			        FILES_DONE=$((FILES_DONE+1))
-				echo -n "${FILES_DONE} / ${FILES_TO_HASH}"
-				tput rc
-				continue
-			}
-		}
 		CURRENTHASH=`createHash "${CURRENTFILENAME}"`
 		FILES_DONE=$((FILES_DONE+1))
-		echo "${CURRENTHASH}" >> "${HASHDATABASE_FILENAME}"
-#		echo -n "."
+		echo "${CURRENTHASH}" >> "${FILEHASH_DB}"
 		echo -n "${FILES_DONE} / ${FILES_TO_HASH}"
 		tput rc
-	done < ${PLAIN_FILE_LIST_FILE}
+	done < ${FILELIST_DB}
 	echo
 	END_SECONDS=`date +%s`
 	SECONDS_NEEDED=`echo $END_SECONDS - $START_SECONDS | bc`
-	HASHES_PER_SECOND=`echo $FILES_TO_HASH / $SECONDS_NEEDED | bc`
-	let FILES_SKIPPED_PERCENT=100*$FILES_SKIPPED_COUNT/$FILES_DONE
+	if [ ${SECONDS_NEEDED} -ne 0 ];then
+		HASHES_PER_SECOND=`echo $FILES_TO_HASH / $SECONDS_NEEDED | bc`
+	else
+		HASHES_PER_SECOND=$FILES_TO_HASH
+	fi
+	if [ ${FILES_DONE} -ne 0 ];then
+		let FILES_SKIPPED_PERCENT=100*$FILES_SKIPPED_COUNT/$FILES_DONE
+	else
+		FILES_SKIPPED_PERCENT=0
+	fi
 	echo "Files skipped : $FILES_SKIPPED_COUNT (${FILES_SKIPPED_PERCENT}%)" 
 	echo "Time elapsed  : $SECONDS_NEEDED seconds"
 	echo "Hashes/second : $HASHES_PER_SECOND"
@@ -165,34 +177,49 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 }
 
 function sortFileHashDatabase() {
-	logInfo "Sorting `countEntriesInFile "${HASHDATABASE_FILENAME}"` files in filehash database..."
-	#logInfo "Sorting FileHashDatabase ${HASHDATABASE_FILENAME} into ${HASHDATABASE_FILENAME_TMP}..."
-	cat "${HASHDATABASE_FILENAME}" | sort > "${HASHDATABASE_FILENAME_TMP}"
-	#logInfo "Moving ${HASHDATABASE_FILENAME_TMP} to ${HASHDATABASE_FILENAME}"
-	mv "${HASHDATABASE_FILENAME_TMP}" "${HASHDATABASE_FILENAME}"
+	logInfo "Sorting `countEntriesInFile "${FILEHASH_DB}"` files in filehash database..."
+	cat "${FILEHASH_DB}" | sort > "${FILEHASH_DB_TMP}"
+	logInfo "Moving ${FILEHASH_DB_TMP} to ${FILEHASH_DB}"
+	mv "${FILEHASH_DB_TMP}" "${FILEHASH_DB}"
 	logInfo "Sorting FileHashDatabase done."
 }
 
 # Works only with sorted filehashdatabase
 function createDuplicateFilelist() {
-	logInfo "Searching duplicates in database..."
-	uniq -d -w 32 "${HASHDATABASE_FILENAME}" "${DUPLICATES_FILENAME}"
+	logInfo "Searching duplicates in database and creating duplicates db: ${DUPLICATES_DB}..."
+	uniq -d -w 32 "${FILEHASH_DB}" "${DUPLICATES_DB}.tmp"
+	cat ${DUPLICATES_DB}.tmp | cut -d ' ' -f2- | sed 's/^ //g' | sort > ${DUPLICATES_DB}
+	rm "${DUPLICATES_DB}.tmp"
 	logInfo "Done."
+}
+
+function createCopyDuplicatesToArchiveScript() {
+	logInfo "Creating script to copy duplicates to archive: ${DUPLICATE_FILES_ARCHIVE_FOLDER}..."
+	cat ${DUPLICATES_DB} | sed "s/^/cp -uv --parents '/g" | sed "s/$/' ${DUPLICATE_FILES_ARCHIVE_FOLDER}/g" | sort > ${COPY_DUPLICATES_SCRIPT}
+	chmod +x ${COPY_DUPLICATES_SCRIPT}
+	logInfo "Script created: ${COPY_DUPLICATES_SCRIPT}"
+}
+
+function createDeleteDuplicatesFromRootPathScript() {
+	logInfo "Creating script to delete duplicates in root folder: ${ROOT_PATH}..."
+	cat ${DUPLICATES_DB} | sed "s/^/rm -v '/g" sort > ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}
+	chmod +x ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}
+	logInfo "Script created: ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}"
 }
 
 function showDuplicates() {
 	logInfo "Show duplicate files:"
-	cat "${DUPLICATES_FILENAME}"
-	echo "Found `countEntriesInFile ${DUPLICATES_FILENAME} duplicates.`"
+	cat "${DUPLICATES_DB}"
+	echo "Found `countEntriesInFile ${DUPLICATES_DB} duplicates.`"
 }
 
 # Works only with sorted filehashdatabase
 function removeDuplicateFileHashDatabaseEntries() {
 	logInfo "Removing duplicate file hash entries in database..."
-	logInfo "Entries before cleanup: `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
-	cat "${HASHDATABASE_FILENAME}" | uniq > "${HASHDATABASE_FILENAME_TMP}"
-	mv "${HASHDATABASE_FILENAME_TMP}" "${HASHDATABASE_FILENAME}"
-	logInfo "Entries after  cleanup: `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
+	logInfo "Entries before cleanup: `countEntriesInFile "${FILEHASH_DB}"`"
+	cat "${FILEHASH_DB}" | uniq > "${FILEHASH_DB_TMP}"
+	mv "${FILEHASH_DB_TMP}" "${FILEHASH_DB}"
+	logInfo "Entries after  cleanup: `countEntriesInFile "${FILEHASH_DB}"`"
 }
 
 function showUsage() {
@@ -219,9 +246,9 @@ function showStats() {
 	echo
 	echo "Statistics"
 	echo
-	echo -e "Files in filehash database : `countEntriesInFile "${HASHDATABASE_FILENAME}"`\t(`countFileSizeInBytes "${HASHDATABASE_FILENAME}"`)\tmodified: `stat -c %y "${HASHDATABASE_FILENAME}"`"
-	echo -e "Files in plain file list   : `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`\t(`countFileSizeInBytes "${PLAIN_FILE_LIST_FILE}"`)\tmodified: `stat -c %y "${PLAIN_FILE_LIST_FILE}"`"
-	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_FILENAME}"`\t(`countFileSizeInBytes "${DUPLICATES_FILENAME}"`)\tmodified `stat -c %y "${DUPLICATES_FILENAME}"`"
+	echo -e "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
+	echo -e "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
+	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified `stat -c %y "${DUPLICATES_DB}"`"
 	echo
 }
 
@@ -234,8 +261,8 @@ function exitIfRootPathIsNotSet() {
 }
 
 function printDuplicatesPercent() {
-	HASHES_COUNT=`countEntriesInFile "${HASHDATABASE_FILENAME}"`
-	DUPLICATES_COUNT=`countEntriesInFile "${DUPLICATES_FILENAME}"`
+	HASHES_COUNT=`countEntriesInFile "${FILEHASH_DB}"`
+	DUPLICATES_COUNT=`countEntriesInFile "${DUPLICATES_DB}"`
 	DUPLICATES_PERCENT=`echo "100 * $DUPLICATES_COUNT / $HASHES_COUNT" | bc`
 	echo "Found $DUPLICATES_COUNT duplicates in $HASHES_COUNT files (${DUPLICATES_PERCENT}%)."
 }
@@ -246,7 +273,7 @@ function printDuplicatesPercent() {
 ########################################################################################################
 
 ARGUMENTS_EXIST=0
-while getopts "acCdDfhHpPr:RsSv" options; do
+while getopts "acCdDfghHnpPr:Rsv" options; do
 	ARGUMENTS_EXIST=1
 	case "$options" in
 		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
@@ -262,26 +289,28 @@ while getopts "acCdDfhHpPr:RsSv" options; do
 		   DEBUG=1
 		   ;;
 		D) echo "Show contents of duplicates file:"
-		   cat "${DUPLICATES_FILENAME}"
-		   echo "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_FILENAME}"`"
+		   cat "${DUPLICATES_DB}"
+		   echo "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`"
 		   exit 0
 		   ;;
 		f) ACTION="FIND_FILES_AND_CREATE_PLAIN_FILE_LIST"
+		   ;;
+		g) ACTION="GENERATE_SCRIPTS"
 		   ;;
 		h) showUsage
 		   exit 0
 		   ;;
 		H) echo "Show contents of hashdatabase file:"
-		   cat "${HASHDATABASE_FILENAME}"
-		   echo "Files in filehash database : `countEntriesInFile "${HASHDATABASE_FILENAME}"`"
+		   cat "${FILEHASH_DB}"
+		   echo "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`"
 		   exit 0
 		   ;;
 		p) # Create plain files filelist
 		   ACTION="CREATE_PLAIN_FILES_FILELIST"
 		   ;;
 		P) echo "Show contents of plain filelist file:"
-		   cat "${PLAIN_FILE_LIST_FILE}"
-		   echo "Files in plain file list   : `countEntriesInFile "${PLAIN_FILE_LIST_FILE}"`"
+		   cat "${FILELIST_DB}"
+		   echo "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`"
 		   exit 0
 		   ;;
 		r) ROOT_PATH="${OPTARG}"
@@ -292,8 +321,7 @@ while getopts "acCdDfhHpPr:RsSv" options; do
 		s) showStats
 		   exit 0
 		   ;;
-		S) # Set skip existing hash recalculation
-		   SKIP_FILES_THAT_ALREADY_HAVE_A_HASH=1
+		n) RECALC_EXISTING_HASHES=1
 		   ;;
 		v) ACTION="SHOW_VERSION"
 		   showVersion
@@ -347,6 +375,11 @@ case "${ACTION}" in
 	CREATE_DUPLICATES_FILE_FROM_FILEHASH_DATABASE)
 		createDuplicateFilelist
 		printDuplicatesPercent
+		exit 0
+		;;
+	GENERATE_SCRIPTS)
+		createCopyDuplicatesToArchiveScript
+		createDeleteDuplicatesFromRootPathScript
 		exit 0
 		;;
 esac
