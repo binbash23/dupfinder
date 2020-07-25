@@ -32,38 +32,40 @@ USAGE
    
 OPTIONS
 
-	-a Search in path for duplicates (requires -r)
-	-c Calculate hashes for files in plain filelist file and add them to 
-	   hash database
+	-a Search in path for duplicates (requires -r). This option scans
+	   the root path for files, creates hashes for them and searches for
+	   duplicate files. You can use -g to generate scripts for moving
+	   the duplicates to an archive folder.
+	-c Calculate hashes for files in filelist file and add them to 
+	   filehash database
 	-C Create duplicate files file from hash database
-	-D Show contents of duplicates file
+	-d Show contents of duplicates file
 	-f search root path for files and create plain files file (requires -r)
 	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
 	-H Show contents of hash database
 	-n Calculate new hash for all files found, even if they exist in hash db
-	-p Create plain files filelist (requires -r)
-	-P Show contents of plain filelist file
-	-r PATH set root path
-	-R Delete filehash database
+	-p Create filelist database for root path (requires -r)
+	-P Show contents of filelist database
+	-r [PATH] set root path
+	-R Delete filehash database files
 	-s Show statistics of database
 	-v Verbose mode
 	-V Show program version
 
 EXAMPLES
 
-	1)
-	Search root path /tmp/Pictures and create a has database for all files. If 
+	1) Search root path /tmp/Pictures and create a has database for all files. If 
 	there is a hash	found in the database for a file in root path, the hash 
 	calculation will be skipped. To	calculate all hashes again even if they are 
 	already in the database, add -n. Output will be verbose (-v).
+		> dupfinder -avr /tmp/Pictures
 
-	> dupfinder -avr /tmp/Pictures
+	2) Show stats of current database files.
+		> dupfinder -s
 
-	2)
-	Show stats of current database files.
-
-	> dupfinder -s
+	3) Generate scripts to copy the duplicates to an archive folder and to delete them.
+		> dupfinder -g
 
 "
 
@@ -157,8 +159,8 @@ function createHash() {
 }
 
 function deleteFileHashDatabase() {
-	logInfo "Deleting database"
-	[ "" == "${FILEHASH_DB}" ] && return
+	logInfo "Deleting database files."
+#	[ "" == "${FILEHASH_DB}" ] && return
 	[ -f "${FILEHASH_DB}" ] && {
 		logInfo "Deleting ${FILEHASH_DB}"
 		rm "${FILEHASH_DB}"
@@ -323,6 +325,30 @@ function touchDBFiles() {
 	}
 }
 
+function showContentsOfDuplicatesFile() {
+	echo "Show contents of duplicates file:"
+        [ ! -f ${DUPLICATES_DB} ] && {
+                logInfo "Duplicates DB \"${DUPLICATES_DB}\" not found."
+		return 1
+        }
+	cat "${DUPLICATES_DB}"
+	echo
+	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
+	echo
+}
+
+function showContentsOfHashdatabaseFile() {
+	echo "Show contents of hashdatabase file:"
+        [ ! -f ${FILEHASH_DB} ] && {
+                logInfo "Filehash database \"${FILEHASH_DB}\" not found."
+		return 1
+        }
+	cat "${FILEHASH_DB}"
+	echo
+        echo -e "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
+	echo
+}
+
 
 ########################################################################################################
 # Main
@@ -332,7 +358,7 @@ function touchDBFiles() {
 touchDBFiles
 
 ARGUMENTS_EXIST=0
-while getopts "acCDfghHnpPr:RsvV" options; do
+while getopts "acCdfghHnpPr:RsvV" options; do
 	ARGUMENTS_EXIST=1
 	case "$options" in
 		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
@@ -347,9 +373,7 @@ while getopts "acCDfghHnpPr:RsvV" options; do
 		   echo "> Verbose mode = ON"
 		   DEBUG=1
 		   ;;
-		D) echo "Show contents of duplicates file:"
-		   cat "${DUPLICATES_DB}"
-		   echo "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`"
+		d) showContentsOfDuplicatesFile
 		   exit 0
 		   ;;
 		f) ACTION="FIND_FILES_AND_CREATE_PLAIN_FILE_LIST"
@@ -359,9 +383,7 @@ while getopts "acCDfghHnpPr:RsvV" options; do
 		h) showUsage
 		   exit 0
 		   ;;
-		H) echo "Show contents of hashdatabase file:"
-		   cat "${FILEHASH_DB}"
-		   echo "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`"
+		H) showContentsOfHashdatabaseFile
 		   exit 0
 		   ;;
 		p) # Create plain files filelist
@@ -420,8 +442,8 @@ case "${ACTION}" in
 		exit 0
 		;;
 	DELETE_FILEHASH_DATABASE_FILE)
-		echo "Delete filehash database? (y/Y)"
-		read X
+#		echo "Delete filehash database? (y/Y)"
+		read -p "Delete filehash database? (y/Y) : " X
 		[ "${X}" = "y" -o "${X}" = "Y" ] && {
 			deleteFileHashDatabase
 			echo "Database deleted."
