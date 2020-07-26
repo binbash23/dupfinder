@@ -240,7 +240,7 @@ function createCopyDuplicatesToArchiveScript() {
 
 function createDeleteDuplicatesFromRootPathScript() {
 	logInfo "Creating script to delete duplicates in root folder: ${ROOT_PATH}..."
-	cat ${DUPLICATES_DB} | sed "s/^/rm -v '/g" | sort > ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}
+	cat ${DUPLICATES_DB} | sed "s/^/rm -v '/g" | sed "s/$/'/g" | sort > ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}
 	chmod +x ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}
 	logInfo "Script created: ${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}"
 }
