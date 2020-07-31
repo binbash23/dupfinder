@@ -73,6 +73,17 @@ EXAMPLES
 #
 # Functions
 #
+
+function cleanUpAndExit() {
+	echo
+	logInfo "STRG-C detected. Cleaning up..."
+	showStats
+	logInfo "Exiting."
+	exit 0
+}
+
+trap cleanUpAndExit SIGINT
+
 function logInfo() {
 	if [ $DEBUG -eq 1 ]; then
 		echo "> $1"
@@ -185,6 +196,11 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	logInfo "Calculating hashes for ${FILES_TO_HASH} files to filehashdatabase..."
 	START_SECONDS=`date +%s`
 	FILES_DONE=0
+	NOW_SECONDS=`date +%s`
+	ELAPSED_SECONDS=1
+	HASH_RATE_PER_SECOND=1
+	SHOW_STATS=0
+	SECONDS_LEFT=-1
 	echo -n "Files done: "
 	tput sc
 	while read LINE;do
@@ -192,7 +208,16 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 		CURRENTHASH=`createHash "${CURRENTFILENAME}"`
 		FILES_DONE=$((FILES_DONE+1))
 		echo "${CURRENTHASH}" >> "${FILEHASH_DB}"
-		echo -n "${FILES_DONE} / ${FILES_TO_HASH}"
+		NOW_SECONDS=`date +%s`
+		ELAPSED_SECONDS=`echo "$NOW_SECONDS - $START_SECONDS" | bc`
+		SHOW_STATS=$((${FILES_DONE} % 50))
+		if [ ${SHOW_STATS} -eq 0 ];then
+			[ $ELAPSED_SECONDS -eq 0 ] && ELAPSED_SECONDS=1
+			HASH_RATE_PER_SECOND=$((${FILES_DONE} / ${ELAPSED_SECONDS}))
+			FILES_LEFT=$((${FILES_TO_HASH} - ${FILES_DONE}))
+			SECONDS_LEFT=$((${FILES_LEFT} / ${HASH_RATE_PER_SECOND}))
+		fi
+		echo -n "${FILES_DONE}/${FILES_TO_HASH} $HASH_RATE_PER_SECOND hashes/s ${SECONDS_LEFT}s left                 "
 		tput rc
 	done < ${FILELIST_DB}
 	echo
@@ -426,6 +451,7 @@ case "${ACTION}" in
 		calculateHashesForPlainfilesFileIntoFileHashDatabase
 		createDuplicateFilelist
 		printDuplicatesPercent
+		showStats
 		exit 0
 		;;
 	CREATE_PLAIN_FILES_FILELIST)
