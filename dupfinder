@@ -55,7 +55,7 @@ OPTIONS
 
 EXAMPLES
 
-	1) Search root path /tmp/Pictures and create a has database for all files. If 
+	1) Search root path /tmp/Pictures and create a hash database for all files. If 
 	there is a hash	found in the database for a file in root path, the hash 
 	calculation will be skipped. To	calculate all hashes again even if they are 
 	already in the database, add -n. Output will be verbose (-v).
@@ -334,6 +334,21 @@ function showVersion() {
 	echo
 }
 
+function calculateSizeOfFilesInFile() {
+        FILENAME="${1}"
+	[ -f "${FILENAME}" ] || {
+        	echo 0
+                return
+        }
+	SUM_BYTES=0
+	while read LINE;do
+		FILESIZE=`stat -c "%s" "${LINE}" 2>/dev/null`
+		[ "$FILESIZE" ] && SUM_BYTES=$[SUM_BYTES + FILESIZE ]
+	done < "${FILENAME}"
+	SUM_BYTES_FORMATTED=`echo "scale=3;$SUM_BYTES/1024/1024/1024"|bc`
+	echo "$SUM_BYTES_FORMATTED GB"
+}
+
 function showStats() {
 	echo
 	echo "Statistics"
@@ -341,6 +356,11 @@ function showStats() {
 	echo -e "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
 	echo -e "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
 	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
+	echo -n "Size of all duplicates     : "
+	tput sc
+	echo -n "(calculating size of duplicates...)"
+	tput rc
+	echo -e "`calculateSizeOfFilesInFile "${DUPLICATES_DB}"`                                              "
 	echo
 }
 
@@ -390,6 +410,11 @@ function showContentsOfDuplicatesFile() {
 	cat "${DUPLICATES_DB}"
 	echo
 	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
+	echo -n "Size of all duplicates     : "
+	tput sc
+	echo -n "(calculating size of duplicates...)"
+	tput rc
+	echo -e "`calculateSizeOfFilesInFile "${DUPLICATES_DB}"`                                              "
 	echo
 }
 
@@ -405,10 +430,57 @@ function showContentsOfHashdatabaseFile() {
 	echo
 }
 
+function checkForCommand() {
+        [ ! "${1}" ] && {
+#                logInfo "Error: no command given to check."
+                return 0
+        }
+#        logInfo "Checking if ${1} is installed."
+        which "${1}" >/dev/null 2>&1
+        RET_VAL=$?
+        [ "$RET_VAL" -ne 0 ] && {
+                echo "Error: ${1} not found."
+                echo "Please install ${1}. For example: apt-get install ${1}"
+                return 1
+        }
+#        logInfo "Success: command ${1} is installed."
+        return 0
+}
+
+#
+# check if all needed tools are available
+#
+function checkDependencies() {
+        DEPENDENCY_ERRORS=0
+#        logInfo "Checking dependencies..."
+
+        checkForCommand "$HASH_CMD"
+        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+        checkForCommand "bc"
+        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+        checkForCommand "wc"
+        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+        checkForCommand "diff"
+        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+
+        [ $DEPENDENCY_ERRORS -eq 0 ] && {
+#                logInfo "Dependency check OK."
+                return 0
+        }
+#        logInfo "Dependency check had errors."
+        return 1
+}
+
 
 ########################################################################################################
 # Main
 ########################################################################################################
+
+# Check if all needed command are installed
+checkDependencies || {
+        echo "Missing dependecies. Please install the missing commands and restart."
+        exit 1
+}
 
 # If DB files do not exist touch them
 touchDBFiles
