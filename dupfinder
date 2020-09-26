@@ -148,7 +148,8 @@ function createPlainFileList() {
 		elif [ ${FILES_IN_FILELIST_DB_AFTER_DIFF} -eq 0 ];then
 			PERCENT_SKIPPED=100
 		else	
-			PERCENT_SKIPPED=`echo "100 * ( ${FILES_IN_FILELIST_DB} - ${FILES_IN_FILELIST_DB_AFTER_DIFF} ) / ${FILES_IN_FILELIST_DB}" | bc`
+#			PERCENT_SKIPPED=`echo "100 * ( ${FILES_IN_FILELIST_DB} - ${FILES_IN_FILELIST_DB_AFTER_DIFF} ) / ${FILES_IN_FILELIST_DB}" | bc`
+			PERCENT_SKIPPED=`awk -v f="$FILES_IN_FILELIST_DB" -v f2="$FILES_IN_FILELIST_DB_AFTER_DIFF" 'BEGIN { printf "%-.2f\n", 100*(f-f2)/f }'`
 		fi
 		logInfo "Files skipped because hashes are already in db: ${SKIPPED_FILES_COUNT} / ${PERCENT_SKIPPED}%"
 		[ -f "${FILELIST_DB}.tmp" ] && rm "${FILELIST_DB}.tmp"
@@ -209,7 +210,9 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 		FILES_DONE=$((FILES_DONE+1))
 		echo "${CURRENTHASH}" >> "${FILEHASH_DB}"
 		NOW_SECONDS=`date +%s`
-		ELAPSED_SECONDS=`echo "$NOW_SECONDS - $START_SECONDS" | bc`
+#		ELAPSED_SECONDS=`echo "$NOW_SECONDS - $START_SECONDS" | bc`
+#		ELAPSED_SECONDS=`awk -v n="$NOW_SECONDS" -v n2="$START_SECONDS" 'BEGIN { printf "%d\n", n-n2 }'`
+		ELAPSED_SECONDS=`echo $(($NOW_SECONDS - $START_SECONDS))`
 		SHOW_STATS=$((${FILES_DONE} % 50))
 		if [ ${SHOW_STATS} -eq 0 ];then
 			[ $ELAPSED_SECONDS -eq 0 ] && ELAPSED_SECONDS=1
@@ -222,9 +225,11 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	done < ${FILELIST_DB}
 	echo
 	END_SECONDS=`date +%s`
-	SECONDS_NEEDED=`echo $END_SECONDS - $START_SECONDS | bc`
+#	SECONDS_NEEDED=`echo $END_SECONDS - $START_SECONDS | bc`
+	SECONDS_NEEDED=`echo $(($END_SECONDS - $START_SECONDS))`
 	if [ ${SECONDS_NEEDED} -ne 0 ];then
-		HASHES_PER_SECOND=`echo $FILES_TO_HASH / $SECONDS_NEEDED | bc`
+#		HASHES_PER_SECOND=`echo $FILES_TO_HASH / $SECONDS_NEEDED | bc`
+		HASHES_PER_SECOND=`echo $(($FILES_TO_HASH / $SECONDS_NEEDED))`
 	else
 		HASHES_PER_SECOND=$FILES_TO_HASH
 	fi
@@ -332,13 +337,14 @@ function calculateSizeOfFilesInFile() {
 		FILESIZE=`stat -c "%s" "${LINE}" 2>/dev/null`
 		[ "$FILESIZE" ] && SUM_BYTES=$[SUM_BYTES + FILESIZE ]
 	done < "${FILENAME}"
-	SUM_BYTES_FORMATTED=`echo "scale=3;$SUM_BYTES/1024/1024/1024"|bc`
+#	SUM_BYTES_FORMATTED=`echo "scale=3;$SUM_BYTES/1024/1024/1024"|bc`
+	SUM_BYTES_FORMATTED=`awk -v s="$SUM_BYTES" 'BEGIN { printf "%-.3f", s/1024/1024/1024 }'`
 	echo "$SUM_BYTES_FORMATTED GB"
 }
 
 function showStats() {
 	echo
-	echo "Statistics"
+	echo "Dupfinder Statistics"
 	echo
 	echo -e "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
 	echo -e "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
@@ -366,7 +372,8 @@ function printDuplicatesPercent() {
 		echo "Found 0 duplicates in 0 files (0%)."
 		return
 	else
-		DUPLICATES_PERCENT=`echo "100 * $DUPLICATES_COUNT / $HASHES_COUNT" | bc`
+#		DUPLICATES_PERCENT=`echo "100 * $DUPLICATES_COUNT / $HASHES_COUNT" | bc`
+		DUPLICATES_PERCENT=`echo $((100 * $DUPLICATES_COUNT / $HASHES_COUNT))`
 		echo "Found $DUPLICATES_COUNT duplicates in $HASHES_COUNT files (${DUPLICATES_PERCENT}%)."
 	fi
 }
@@ -419,10 +426,10 @@ function showContentsOfHashdatabaseFile() {
 
 function checkForCommand() {
         [ ! "${1}" ] && {
-#                logInfo "Error: no command given to check."
+                logInfo "Error: no command given to check."
                 return 0
         }
-#        logInfo "Checking if ${1} is installed."
+        logInfo "Checking if ${1} is installed."
         which "${1}" >/dev/null 2>&1
         RET_VAL=$?
         [ "$RET_VAL" -ne 0 ] && {
@@ -430,7 +437,7 @@ function checkForCommand() {
                 echo "Please install ${1}. For example: apt-get install ${1}"
                 return 1
         }
-#        logInfo "Success: command ${1} is installed."
+        logInfo "Success: command ${1} is installed."
         return 0
 }
 
@@ -439,11 +446,13 @@ function checkForCommand() {
 #
 function checkDependencies() {
         DEPENDENCY_ERRORS=0
-#        logInfo "Checking dependencies..."
+        logInfo "Checking dependencies..."
 
         checkForCommand "$HASH_CMD"
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
-        checkForCommand "bc"
+#        checkForCommand "bc"
+#        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+        checkForCommand "awk"
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
         checkForCommand "wc"
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
@@ -453,10 +462,10 @@ function checkDependencies() {
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
 
         [ $DEPENDENCY_ERRORS -eq 0 ] && {
-#                logInfo "Dependency check OK."
+                logInfo "Dependency check OK."
                 return 0
         }
-#        logInfo "Dependency check had errors."
+        logInfo "Dependency check had errors."
         return 1
 }
 
