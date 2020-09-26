@@ -9,5 +9,11 @@ Use dupfinder to find duplicate files in big archives of files.
 Dupfinder searches the given path for files, creates a hash database for
 all files and searches for files which have the same hash.
 
+Dupfinder can be used to search for duplicate pictures in huge picture
+collections for example.
+
+Example:
+	> ./dupfinder -avr /tmp/Pictures
+
 Good Luck, Jens 
 
