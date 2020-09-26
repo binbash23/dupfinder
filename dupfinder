@@ -243,19 +243,6 @@ function sortFileHashDatabase() {
 	logInfo "Sorting FileHashDatabase done."
 }
 
-# Works only with sorted filehashdatabase
-#function createDuplicateFilelist() {
-#	logInfo "Searching duplicates in database and creating duplicates db..."
-#	[ `countEntriesInFile "${FILEHASH_DB}"` -eq 0 ] && {
-#		logInfo "Filehash db is empty. No duplicates found."
-#		return
-#	}
-#	uniq -d -w 32 "${FILEHASH_DB}" "${DUPLICATES_DB}.tmp"
-#	cat ${DUPLICATES_DB}.tmp | cut -d ' ' -f2- | sed 's/^ //g' | sort > ${DUPLICATES_DB}
-#	[ -f "${DUPLICATES_DB}.tmp" ] && rm "${DUPLICATES_DB}.tmp"
-#	logInfo "Done."
-#}
-
 function createDuplicateFilelist() {
 	echo "Searching duplicates in database and creating duplicates db..."
 	FILES_IN_FILEHASH_DB=`countEntriesInFile "${FILEHASH_DB}"`
@@ -461,6 +448,8 @@ function checkDependencies() {
         checkForCommand "wc"
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
         checkForCommand "diff"
+        let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
+        checkForCommand "stat"
         let DEPENDENCY_ERRORS=$DEPENDENCY_ERRORS+$?
 
         [ $DEPENDENCY_ERRORS -eq 0 ] && {
