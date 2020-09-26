@@ -203,7 +203,7 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	SHOW_STATS=0
 	SECONDS_LEFT=-1
 	echo -n "Files done: "
-	tput sc
+	tput sc 2>/dev/null
 	while read LINE;do
 		CURRENTFILENAME="${LINE}"
 		CURRENTHASH=`createHash "${CURRENTFILENAME}"`
@@ -221,7 +221,7 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 			SECONDS_LEFT=$((${FILES_LEFT} / ${HASH_RATE_PER_SECOND}))
 		fi
 		echo -n "${FILES_DONE}/${FILES_TO_HASH} $HASH_RATE_PER_SECOND hashes/s ${SECONDS_LEFT}s left                 "
-		tput rc
+		tput rc 2>/dev/null
 	done < ${FILELIST_DB}
 	echo
 	END_SECONDS=`date +%s`
@@ -265,12 +265,12 @@ function createDuplicateFilelist() {
 	logInfo "Hashes to search in filehash db: ${HASHES_TO_SEARCH}"
 	HASHES_PROCESSED=0
 	echo -n "Hashes processed: "
-	tput sc
+	tput sc 2>/dev/null
 	while read line;do
 		grep ${line} ${FILEHASH_DB} | cut -c35-|tail -n+2 >> ${DUPLICATES_DB}
 		HASHES_PROCESSED=$((${HASHES_PROCESSED} + 1))
 		echo -n "${HASHES_PROCESSED}/${HASHES_TO_SEARCH}"
-		tput rc
+		tput rc 2>/dev/null
 	done < ${DUPLICATES_DB}.tmp
 	[ -f "${DUPLICATES_DB}.tmp" ] && rm "${DUPLICATES_DB}.tmp"
 	echo
@@ -350,9 +350,9 @@ function showStats() {
 	echo -e "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
 	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
 	echo -n "Size of all duplicates     : "
-	tput sc
+	tput sc 2>/dev/null
 	echo -n "(calculating size of duplicates...)"
-	tput rc
+	tput rc 2>/dev/null
 	echo -e "`calculateSizeOfFilesInFile "${DUPLICATES_DB}"`                                              "
 	echo
 }
@@ -405,9 +405,9 @@ function showContentsOfDuplicatesFile() {
 	echo
 	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
 	echo -n "Size of all duplicates     : "
-	tput sc
+	tput sc 2>/dev/null
 	echo -n "(calculating size of duplicates...)"
-	tput rc
+	tput rc 2>/dev/null
 	echo -e "`calculateSizeOfFilesInFile "${DUPLICATES_DB}"`                                              "
 	echo
 }
