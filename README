@@ -7,7 +7,9 @@ Written by
 
 Use dupfinder to find duplicate files in big archives of files.
 Dupfinder searches the given path for files, creates a hash database for
-all files and searches for files which have the same hash.
+all files and searches for files which have the same hash. So if you
+have a picture or video with 2 diffenrent names or in different folders,
+you can identify them and create an archive script and a delete script.
 
 Dupfinder can be used to search for duplicate pictures in huge picture
 collections for example.
@@ -37,13 +39,26 @@ Examples:
 	> copy_dups_from_root_path_to_archive.sh 
    
    This script which will copy all duplicates in root path to
-   an archive folder called "duplicates"
+   an archive folder in your current directory called "duplicates".
    
    	> delete_dups_from_root_path.sh
 	
    This script can be used to delete all duplicate files from the
    root path. If you want to exclude several folders, you can modify
    the script with grep for example.
+   The delete script contents only the duplicates. If there are 3
+   similar files, the delete script will only have 2 of them deleted.
+   
+   Just have a look into the delete script:
+   
+   > tail delete_dups_from_root_path.sh 
+     rm -v '/tmp/2015/921.JPG'
+     rm -v '/tmp/2015/.thumbs/923.JPG'
+     
+   If you don't want to delete file from the thumbnail folders, create
+   a new script:
+   
+   > grep -v ".thumbs" > delete_dups_from_root_path_custom.sh
 
 Good Luck, Jens 
 
