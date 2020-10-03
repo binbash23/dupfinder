@@ -14,15 +14,36 @@ collections for example.
 
 Example:
 
-	To search duplicate files in path /tmp/picture use:
+1) To search duplicate files in path /tmp/picture use:
+
 	> ./dupfinder -avr /tmp/Pictures
-	
-	To get help for all options use:
+
+   3 files will be created:
+	> filelist.db - list of files in root path
+	> filehash.db - list of all files with every hash value
+	> duplicates.db - list of duplicate files in
+			
+2) To get help for all options use:
+
 	> ./dupfinder -h
 	
-	To generate 2 scripts which can be used to archive the duplicates to
-	an archive folder and to delete the duplicates use:
+3) To generate 2 scripts which can be used to archive the duplicates to
+   an archive folder and to delete the duplicates use:
+   
 	> ./dupfinder -g
+	
+   2 scripts will be generated:
+   
+	> copy_dups_from_root_path_to_archive.sh 
+   
+   This script which will copy all duplicates in root path to
+   an archive folder called "duplicates"
+   
+   	> delete_dups_from_root_path.sh
+	
+   This script can be used to delete all duplicate files from the
+   root path. If you want to exclude several folders, you can modify
+   the script with grep for example.
 
 Good Luck, Jens 
 
