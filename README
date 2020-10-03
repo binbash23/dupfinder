@@ -12,7 +12,7 @@ all files and searches for files which have the same hash.
 Dupfinder can be used to search for duplicate pictures in huge picture
 collections for example.
 
-Example:
+Examples:
 
 1) To search duplicate files in path /tmp/picture use:
 
