@@ -201,7 +201,7 @@ function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	ELAPSED_SECONDS=1
 	HASH_RATE_PER_SECOND=1
 	SHOW_STATS=0
-	SECONDS_LEFT=-1
+	SECONDS_LEFT=1
 	echo -n "Files done: "
 	tput sc 2>/dev/null
 	while read LINE;do
@@ -585,8 +585,14 @@ case "${ACTION}" in
 		exit 0
 		;;
 	GENERATE_SCRIPTS)
+		echo "Generating scrips..."
+		echo "Creating script to copy all duplicates to archive folder..."
 		createCopyDuplicatesToArchiveScript
+		echo "\"${COPY_DUPLICATES_SCRIPT}\" created."
+		echo "Creating script to delete all duplicates..."
 		createDeleteDuplicatesFromRootPathScript
+		echo "\"${DELETE_DUPLICATES_FROM_ROOT_SCRIPT}\" created."
+		echo
 		exit 0
 		;;
 esac
