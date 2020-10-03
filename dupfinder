@@ -32,10 +32,14 @@ USAGE
    
 OPTIONS
 
-	-a Search in path for duplicates (requires -r). This option scans
-	   the root path for files, creates hashes for them and searches for
-	   duplicate files. You can use -g to generate scripts for moving
-	   the duplicates to an archive folder.
+	-a Search in path for duplicates (requires -r to set the root path). 
+	   This option scans the root path for files, creates hashes for them 
+	   and searches for duplicate files. You can use -g to generate scripts 
+	   for moving the duplicates to an archive folder. So if you have a 
+	   picture or video with 2 diffenrent names or in different folders,
+	   you can identify them and create an archive script and a delete script.
+	   The delete script will only delete duplicates - one version of the
+	   duplicate files will be kept in the root path.
 	-c Calculate hashes for files in filelist file and add them to 
 	   filehash database
 	-C Create duplicate files file from hash database
@@ -55,17 +59,63 @@ OPTIONS
 
 EXAMPLES
 
-	1) Search root path /tmp/Pictures and create a hash database for all files. If 
-	there is a hash	found in the database for a file in root path, the hash 
-	calculation will be skipped. To	calculate all hashes again even if they are 
-	already in the database, add -n. Output will be verbose (-v).
-		> dupfinder -avr /tmp/Pictures
+1) To search duplicate files in path /tmp/picture use:
 
-	2) Show stats of current database files.
-		> dupfinder -s
+	> ./dupfinder -avr /tmp/Pictures
 
-	3) Generate scripts to copy the duplicates to an archive folder and to delete them.
-		> dupfinder -g
+   3 files will be created:
+
+	> filelist.db - list of files in root path
+	> filehash.db - list of all files with every hash value
+	> duplicates.db - list of duplicate files in
+			
+2) To get help for all options use:
+
+	> ./dupfinder -h
+	
+3) To generate 2 scripts which can be used to archive the duplicates to
+   an archive folder and to delete the duplicates use:
+   
+	> ./dupfinder -g
+	
+   2 scripts will be generated:
+   
+	> copy_dups_from_root_path_to_archive.sh 
+   
+   This script which will copy all duplicates in root path to
+   an archive folder in your current directory called \"duplicates\".
+   
+   	> delete_dups_from_root_path.sh
+	
+   This script can be used to delete all duplicate files from the
+   root path. If you want to exclude several folders, you can modify
+   the script with grep for example.
+   The delete script contents only the duplicates. If there are 3
+   similar files, the delete script will only have 2 of them deleted.
+   
+   Just have a look into the delete script:
+   
+   > tail delete_dups_from_root_path.sh 
+     rm -v '/tmp/2015/921.JPG'
+     rm -v '/tmp/2015/.thumbs/923.JPG'
+     
+   If you don't want to delete file from the thumbnail folders, create
+   a new script:
+   
+   > grep -v \".thumbs\" > delete_dups_from_root_path_custom.sh
+
+4) To find out about the duplicates statistics use:
+
+   > ./dupfinder -s
+
+     Dupfinder Statistics
+
+     Files in filehash database : 4774	(537 Kb)	modified: 2020-10-03 17:06:59.953627326 +0200
+     Files in plain file list   : 4774	(378 Kb)	modified: 2020-10-03 17:06:08.454297780 +0200
+     Files in duplicates file   : 1529	(130 Kb)	modified: 2020-10-03 17:07:04.149572704 +0200
+     Size of all duplicates     : 1.489 GB     
+
+Good Luck, Jens 
 
 "
 

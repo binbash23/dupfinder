@@ -1,26 +1,48 @@
-# dupfinder
 
-Written by
-	Jens Heine <binbash@gmx.net>
-	Dennis Brossat <dennis.brossat@email.de>
-	Benjamin Heine <benjaminheine@gmx.net>
 
-Use dupfinder to find duplicate files in big archives of files.
-Dupfinder searches the given path for files, creates a hash database for
-all files and searches for files which have the same hash. So if you
-have a picture or video with 2 diffenrent names or in different folders,
-you can identify them and create an archive script and a delete script.
+	dupfinder by Jens Heine <binbash@gmx.net> 2020
+	             and Dennis Brossat <dennis.brossat@email.de>
+		     and Benjamin Heine <benjaminheine@gmx.net>
 
-Dupfinder can be used to search for duplicate pictures in huge picture
-collections for example.
+USAGE
 
-Examples:
+	dupfinder OPTIONS
+   
+OPTIONS
+
+	-a Search in path for duplicates (requires -r to set the root path). 
+	   This option scans the root path for files, creates hashes for them 
+	   and searches for duplicate files. You can use -g to generate scripts 
+	   for moving the duplicates to an archive folder. So if you have a 
+	   picture or video with 2 diffenrent names or in different folders,
+	   you can identify them and create an archive script and a delete script.
+	   The delete script will only delete duplicates - one version of the
+	   duplicate files will be kept in the root path.
+	-c Calculate hashes for files in filelist file and add them to 
+	   filehash database
+	-C Create duplicate files file from hash database
+	-d Show contents of duplicates file
+	-f search root path for files and create plain files file (requires -r)
+	-g Generate scripts to copy duplicates and to delete duplicates
+	-h Show usage information
+	-H Show contents of hash database
+	-n Calculate new hash for all files found, even if they exist in hash db
+	-p Create filelist database for root path (requires -r)
+	-P Show contents of filelist database
+	-r [PATH] set root path
+	-R Delete filehash database files
+	-s Show statistics of database
+	-v Verbose mode
+	-V Show program version
+
+EXAMPLES
 
 1) To search duplicate files in path /tmp/picture use:
 
 	> ./dupfinder -avr /tmp/Pictures
 
    3 files will be created:
+
 	> filelist.db - list of files in root path
 	> filehash.db - list of all files with every hash value
 	> duplicates.db - list of duplicate files in
@@ -60,5 +82,17 @@ Examples:
    
    > grep -v ".thumbs" > delete_dups_from_root_path_custom.sh
 
+4) To find out about the duplicates statistics use:
+
+   > ./dupfinder -s
+
+     Dupfinder Statistics
+
+     Files in filehash database : 4774	(537 Kb)	modified: 2020-10-03 17:06:59.953627326 +0200
+     Files in plain file list   : 4774	(378 Kb)	modified: 2020-10-03 17:06:08.454297780 +0200
+     Files in duplicates file   : 1529	(130 Kb)	modified: 2020-10-03 17:07:04.149572704 +0200
+     Size of all duplicates     : 1.489 GB     
+
 Good Luck, Jens 
+
 
