@@ -22,11 +22,21 @@ VERSION="20200724"
 RECALC_EXISTING_HASHES="0"
 USAGE_INFO_TEXT="
 
-	dupfinder by Jens Heine <binbash@gmx.net> 2020
-	             and Dennis Brossat <dennis.brossat@email.de>
-		     and Benjamin Heine <benjaminheine@gmx.net>
+NAME
+	dupfinder
 
-USAGE
+DESCRIPTION
+
+Use dupfinder to find duplicate files in big archives of files.
+Dupfinder searches the given path for files, creates a hash database for
+all files and searches for files which have the same hash. So if you
+have a picture or video with 2 diffenrent names or in different folders,
+you can identify them and create an archive script and a delete script.
+
+Dupfinder can be used to search for duplicate pictures in huge picture
+collections for example.
+
+SYNOPSIS
 
 	dupfinder OPTIONS
    
@@ -34,10 +44,11 @@ OPTIONS
 
 	-a Search in path for duplicates (requires -r to set the root path). 
 	   This option scans the root path for files, creates hashes for them 
-	   and searches for duplicate files. You can use -g to generate scripts 
-	   for moving the duplicates to an archive folder. So if you have a 
-	   picture or video with 2 diffenrent names or in different folders,
-	   you can identify them and create an archive script and a delete script.
+	   and searches for duplicate files. You can use dupfinder -g 
+	   later to generate scripts for moving the duplicates to an archive 
+	   folder. So if you have a picture or video with 2 diffenrent names or 
+	   in different folders, you can identify them and create an archive 
+	   script and a delete script.
 	   The delete script will only delete duplicates - one version of the
 	   duplicate files will be kept in the root path.
 	-c Calculate hashes for files in filelist file and add them to 
@@ -115,7 +126,13 @@ EXAMPLES
      Files in duplicates file   : 1529	(130 Kb)	modified: 2020-10-03 17:07:04.149572704 +0200
      Size of all duplicates     : 1.489 GB     
 
-Good Luck, Jens 
+REPORTING BUGS
+	Report bugs to <binbash@gmx.net>
+
+AUTHOR
+	dupfinder by Jens Heine <binbash@gmx.net> 2020
+	             and Dennis Brossat <dennis.brossat@email.de>
+		     and Benjamin Heine <benjaminheine@gmx.net>
 
 "
 
@@ -220,31 +237,43 @@ function createHash() {
 	echo "$HASH"
 }
 
-function deleteFileHashDatabase() {
-	logInfo "Deleting database files."
-#	[ "" == "${FILEHASH_DB}" ] && return
-	[ -f "${FILEHASH_DB}" ] && {
-		logInfo "Deleting ${FILEHASH_DB}"
-		rm "${FILEHASH_DB}"
-	}
-	[ -f "${FILELIST_DB}" ] && {
-		logInfo "Deleting ${FILELIST_DB}"
-		rm "${FILELIST_DB}"
-	}
-	[ -f "${DUPLICATES_DB}" ] && {
-		logInfo "Deleting ${DUPLICATES_DB}"
-		rm "${DUPLICATES_DB}"
-	}
-	logInfo "Done."
+function deleteFilehashDatabase() {
+        [ -f "${FILEHASH_DB}" ] && {
+                logInfo "Deleting ${FILEHASH_DB}"
+                rm "${FILEHASH_DB}"
+		logInfo "Done."
+        }
+}
+
+function deleteFilelistDatabase() {
+        [ -f "${FILELIST_DB}" ] && {
+                logInfo "Deleting ${FILELIST_DB}"
+                rm "${FILELIST_DB}"
+		logInfo "Done."
+        }
+}
+
+function deleteDuplicatesDatabase() {
+        [ -f "${DUPLICATES_DB}" ] && {
+                logInfo "Deleting ${DUPLICATES_DB}"
+                rm "${DUPLICATES_DB}"
+		logInfo "Done."
+        }
+}
+
+function deleteAllDatabases() {
+	logInfo "Deleting all database files."
+	deleteFilehashDatabase
+	deleteFilelistDatabase
+	deleteDuplicatesDatabase
 }
 
 function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
 	FILES_TO_HASH=`countEntriesInFile "${FILELIST_DB}"`
 	[ "${FILES_TO_HASH}" -eq 0 ] && {
-		logInfo "0 files in filehash database. No files to calculate hashes for."
+		logInfo "0 files in filelist database. No files to calculate hashes for."
 		return
 	}
-	logInfo "Calculating hashes for ${FILES_TO_HASH} files to filehashdatabase..."
 	START_SECONDS=`date +%s`
 	FILES_DONE=0
 	NOW_SECONDS=`date +%s`
@@ -396,14 +425,31 @@ function showStats() {
 	echo
 	echo "Dupfinder Statistics"
 	echo
-	echo -e "Files in filehash database : `countEntriesInFile "${FILEHASH_DB}"`\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
-	echo -e "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
-	echo -e "Files in duplicates file   : `countEntriesInFile "${DUPLICATES_DB}"`\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
+	FILE_COUNT_FILEHASH=`countEntriesInFile "${FILEHASH_DB}"`
+	FILE_COUNT_FILELIST=`countEntriesInFile "${FILELIST_DB}"`
+	FILE_COUNT_DUPLICATES=`countEntriesInFile "${DUPLICATES_DB}"`
+#	echo -e "Files in filehash database : ${FILE_COUNT_FILEHASH}\t(`countFileSizeInBytes "${FILEHASH_DB}"`)\tmodified: `stat -c %y "${FILEHASH_DB}"`"
+#	echo -e "Files in plain file list   : ${FILE_COUNT_FILELIST}\t(`countFileSizeInBytes "${FILELIST_DB}"`)\tmodified: `stat -c %y "${FILELIST_DB}"`"
+#	echo -e "Files in duplicates file   : ${FILE_COUNT_DUPLICATES}\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
+	echo -e "Files in filehash database : ${FILE_COUNT_FILEHASH}\t(`countFileSizeInBytes "${FILEHASH_DB}"`)"
+	echo -e "Files in plain file list   : ${FILE_COUNT_FILELIST}\t(`countFileSizeInBytes "${FILELIST_DB}"`)"
+	echo -n "Size of all files          : "
+	tput sc 2>/dev/null
+	echo -n "(calculating size of all files...)"
+	tput rc 2>/dev/null
+	echo -e "`calculateSizeOfFilesInFile "${FILELIST_DB}"`                                              "
+	echo -e "Files in duplicates file   : ${FILE_COUNT_DUPLICATES}\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)"
 	echo -n "Size of all duplicates     : "
 	tput sc 2>/dev/null
 	echo -n "(calculating size of duplicates...)"
 	tput rc 2>/dev/null
 	echo -e "`calculateSizeOfFilesInFile "${DUPLICATES_DB}"`                                              "
+	if [ ${FILE_COUNT_FILELIST} -ne 0 ]; then
+		DUPLICATES_PERCENT=$((FILE_COUNT_DUPLICATES*100/FILE_COUNT_FILELIST))
+	else
+		DUPLICATES_PERCENT=0
+	fi
+	echo -e "Duplicate files            : ${DUPLICATES_PERCENT} %"
 	echo
 }
 
@@ -573,11 +619,14 @@ while getopts "acCdfghHnpPr:RsvV" options; do
 		r) ROOT_PATH="${OPTARG}"
 		   ;;
 		R) # Delete filehashdatabase file
-		   ACTION="DELETE_FILEHASH_DATABASE_FILE"
+		   ACTION="DELETE_FILEHASH_DATABASE_FILES"
 		   ;;
 		s) showStats
 		   exit 0
 		   ;;
+#		u) DELETE_FILEHASH_DATABASE_ON_NEW_SCAN="0"
+#		   logInfo "Use existing filehash database = true"
+#		   ;;
 		n) RECALC_EXISTING_HASHES=1
 		   ;;
 		V) ACTION="SHOW_VERSION"
@@ -618,11 +667,10 @@ case "${ACTION}" in
 		calculateHashesForPlainfilesFileIntoFileHashDatabase
 		exit 0
 		;;
-	DELETE_FILEHASH_DATABASE_FILE)
-#		echo "Delete filehash database? (y/Y)"
-		read -p "Delete filehash database? (y/Y) : " X
+	DELETE_FILEHASH_DATABASE_FILES)
+		read -p "Delete all databases? (y/Y) : " X
 		[ "${X}" = "y" -o "${X}" = "Y" ] && {
-			deleteFileHashDatabase
+			deleteAllDatabases
 			echo "Database deleted."
 			exit 0
 		}

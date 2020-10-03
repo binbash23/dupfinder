@@ -1,10 +1,20 @@
 
 
-	dupfinder by Jens Heine <binbash@gmx.net> 2020
-	             and Dennis Brossat <dennis.brossat@email.de>
-		     and Benjamin Heine <benjaminheine@gmx.net>
+NAME
+	dupfinder
 
-USAGE
+DESCRIPTION
+
+Use dupfinder to find duplicate files in big archives of files.
+Dupfinder searches the given path for files, creates a hash database for
+all files and searches for files which have the same hash. So if you
+have a picture or video with 2 diffenrent names or in different folders,
+you can identify them and create an archive script and a delete script.
+
+Dupfinder can be used to search for duplicate pictures in huge picture
+collections for example.
+
+SYNOPSIS
 
 	dupfinder OPTIONS
    
@@ -12,10 +22,11 @@ OPTIONS
 
 	-a Search in path for duplicates (requires -r to set the root path). 
 	   This option scans the root path for files, creates hashes for them 
-	   and searches for duplicate files. You can use -g to generate scripts 
-	   for moving the duplicates to an archive folder. So if you have a 
-	   picture or video with 2 diffenrent names or in different folders,
-	   you can identify them and create an archive script and a delete script.
+	   and searches for duplicate files. You can use dupfinder -g 
+	   later to generate scripts for moving the duplicates to an archive 
+	   folder. So if you have a picture or video with 2 diffenrent names or 
+	   in different folders, you can identify them and create an archive 
+	   script and a delete script.
 	   The delete script will only delete duplicates - one version of the
 	   duplicate files will be kept in the root path.
 	-c Calculate hashes for files in filelist file and add them to 
@@ -93,6 +104,12 @@ EXAMPLES
      Files in duplicates file   : 1529	(130 Kb)	modified: 2020-10-03 17:07:04.149572704 +0200
      Size of all duplicates     : 1.489 GB     
 
-Good Luck, Jens 
+REPORTING BUGS
+	Report bugs to <binbash@gmx.net>
+
+AUTHOR
+	dupfinder by Jens Heine <binbash@gmx.net> 2020
+	             and Dennis Brossat <dennis.brossat@email.de>
+		     and Benjamin Heine <benjaminheine@gmx.net>
 
 
