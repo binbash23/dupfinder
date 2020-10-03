@@ -13,7 +13,16 @@ Dupfinder can be used to search for duplicate pictures in huge picture
 collections for example.
 
 Example:
+
+	To search duplicate files in path /tmp/picture use:
 	> ./dupfinder -avr /tmp/Pictures
+	
+	To get help for all options use:
+	> ./dupfinder -h
+	
+	To generate 2 scripts which can be used to archive the duplicates to
+	an archive folder and to delete the duplicates use:
+	> ./dupfinder -g
 
 Good Luck, Jens 
 
