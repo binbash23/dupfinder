@@ -433,9 +433,9 @@ function showStats() {
 #	echo -e "Files in duplicates file   : ${FILE_COUNT_DUPLICATES}\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)\tmodified: `stat -c %y "${DUPLICATES_DB}"`"
 	echo -e "Files in filehash database : ${FILE_COUNT_FILEHASH}\t(`countFileSizeInBytes "${FILEHASH_DB}"`)"
 	echo -e "Files in plain file list   : ${FILE_COUNT_FILELIST}\t(`countFileSizeInBytes "${FILELIST_DB}"`)"
-	echo -n "Size of all files          : "
+	echo -n "Size of all files hashed   : "
 	tput sc 2>/dev/null
-	echo -n "(calculating size of all files...)"
+	echo -n "(calculating size of all hashed files...)"
 	tput rc 2>/dev/null
 	echo -e "`calculateSizeOfFilesInFile "${FILELIST_DB}"`                                              "
 	echo -e "Files in duplicates file   : ${FILE_COUNT_DUPLICATES}\t(`countFileSizeInBytes "${DUPLICATES_DB}"`)"
