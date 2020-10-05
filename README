@@ -32,14 +32,14 @@ OPTIONS
 	-c Calculate hashes for files in filelist file and add them to 
 	   filehash database
 	-C Create duplicate files file from hash database
-	-d Show contents of duplicates file
+	-D Show contents of duplicates file
 	-f search root path for files and create plain files file (requires -r)
 	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
 	-H Show contents of hash database
+	-L Show contents of filelist database
 	-n Calculate new hash for all files found, even if they exist in hash db
 	-p Create filelist database for root path (requires -r)
-	-P Show contents of filelist database
 	-r [PATH] set root path
 	-R Delete filehash database files
 	-s Show statistics of database

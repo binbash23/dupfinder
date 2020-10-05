@@ -18,7 +18,7 @@ DELETE_DUPLICATES_FROM_ROOT_SCRIPT="delete_dups_from_root_path.sh"
 ROOT_PATH=""
 HASH_CMD="md5sum"
 DEBUG=0
-VERSION="20200724"
+VERSION=202010051818
 RECALC_EXISTING_HASHES="0"
 USAGE_INFO_TEXT="
 
@@ -54,14 +54,14 @@ OPTIONS
 	-c Calculate hashes for files in filelist file and add them to 
 	   filehash database
 	-C Create duplicate files file from hash database
-	-d Show contents of duplicates file
+	-D Show contents of duplicates file
 	-f search root path for files and create plain files file (requires -r)
 	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
 	-H Show contents of hash database
+	-L Show contents of filelist database
 	-n Calculate new hash for all files found, even if they exist in hash db
 	-p Create filelist database for root path (requires -r)
-	-P Show contents of filelist database
 	-r [PATH] set root path
 	-R Delete filehash database files
 	-s Show statistics of database
@@ -580,7 +580,7 @@ checkDependencies || {
 touchDBFiles
 
 ARGUMENTS_EXIST=0
-while getopts "acCdfghHnpPr:RsvV" options; do
+while getopts "acCDfghHLnpr:RsvV" options; do
 	ARGUMENTS_EXIST=1
 	case "$options" in
 		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
@@ -595,7 +595,7 @@ while getopts "acCdfghHnpPr:RsvV" options; do
 		   echo "> Verbose mode = ON"
 		   DEBUG=1
 		   ;;
-		d) showContentsOfDuplicatesFile
+		D) showContentsOfDuplicatesFile
 		   exit 0
 		   ;;
 		f) ACTION="FIND_FILES_AND_CREATE_PLAIN_FILE_LIST"
@@ -608,13 +608,13 @@ while getopts "acCdfghHnpPr:RsvV" options; do
 		H) showContentsOfHashdatabaseFile
 		   exit 0
 		   ;;
-		p) # Create plain files filelist
-		   ACTION="CREATE_PLAIN_FILES_FILELIST"
-		   ;;
-		P) echo "Show contents of plain filelist file:"
+		L) echo "Show contents of plain filelist file:"
 		   cat "${FILELIST_DB}"
 		   echo "Files in plain file list   : `countEntriesInFile "${FILELIST_DB}"`"
 		   exit 0
+		   ;;
+		p) # Create plain files filelist
+		   ACTION="CREATE_PLAIN_FILES_FILELIST"
 		   ;;
 		r) ROOT_PATH="${OPTARG}"
 		   ;;
