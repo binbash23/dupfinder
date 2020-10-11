@@ -20,6 +20,7 @@ HASH_CMD="md5sum"
 DEBUG=0
 VERSION=202010051818
 RECALC_EXISTING_HASHES="0"
+SKIP_CALCULATING_FILESIZES="0"
 USAGE_INFO_TEXT="
 
 NAME
@@ -61,6 +62,8 @@ OPTIONS
 	-H Show contents of hash database
 	-L Show contents of filelist database
 	-n Calculate new hash for all files found, even if they exist in hash db
+        -N Skip calculating sum of filesizes (size calculation may take some time 
+           in big archives)
 	-p Create filelist database for root path (requires -r)
 	-r [PATH] set root path
 	-R Delete filehash database files
@@ -406,6 +409,10 @@ function showVersion() {
 }
 
 function calculateSizeOfFilesInFile() {
+	[ "${SKIP_CALCULATING_FILESIZES}" -eq 1 ] && {
+		echo "0"
+		return
+	}
         FILENAME="${1}"
 	[ -f "${FILENAME}" ] || {
         	echo 0
@@ -580,7 +587,7 @@ checkDependencies || {
 touchDBFiles
 
 ARGUMENTS_EXIST=0
-while getopts "acCDfghHLnpr:RsvV" options; do
+while getopts "acCDfghHLnNpr:RsvV" options; do
 	ARGUMENTS_EXIST=1
 	case "$options" in
 		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
@@ -621,13 +628,14 @@ while getopts "acCDfghHLnpr:RsvV" options; do
 		R) # Delete filehashdatabase file
 		   ACTION="DELETE_FILEHASH_DATABASE_FILES"
 		   ;;
-		s) showStats
-		   exit 0
+		s) ACTION="SHOW_STATISTICS"
 		   ;;
 #		u) DELETE_FILEHASH_DATABASE_ON_NEW_SCAN="0"
 #		   logInfo "Use existing filehash database = true"
 #		   ;;
 		n) RECALC_EXISTING_HASHES=1
+		   ;;
+		N) SKIP_CALCULATING_FILESIZES=1
 		   ;;
 		V) ACTION="SHOW_VERSION"
 		   showVersion
@@ -651,6 +659,10 @@ case "${ACTION}" in
 		calculateHashesForPlainfilesFileIntoFileHashDatabase
 		createDuplicateFilelist
 		printDuplicatesPercent
+		showStats
+		exit 0
+		;;
+        SHOW_STATISTICS)
 		showStats
 		exit 0
 		;;
