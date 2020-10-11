@@ -39,6 +39,8 @@ OPTIONS
 	-H Show contents of hash database
 	-L Show contents of filelist database
 	-n Calculate new hash for all files found, even if they exist in hash db
+        -N Skip calculating sum of filesizes (size calculation may take some time 
+           in big archives)
 	-p Create filelist database for root path (requires -r)
 	-r [PATH] set root path
 	-R Delete filehash database files
