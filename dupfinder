@@ -18,7 +18,7 @@ DELETE_DUPLICATES_FROM_ROOT_SCRIPT="delete_dups_from_root_path.sh"
 ROOT_PATH=""
 HASH_CMD="md5sum"
 DEBUG=0
-VERSION=202010111157
+VERSION=202206282205
 RECALC_EXISTING_HASHES="0"
 SKIP_CALCULATING_FILESIZES="0"
 USAGE_INFO_TEXT="
@@ -45,9 +45,11 @@ OPTIONS
 
 	-a Search in path for duplicates (requires -r to set the root path). 
 	   This option scans the root path for files, creates hashes for them 
-	   and searches for duplicate files. You can use dupfinder -g 
+	   and searches for duplicate files. The filehash database will also
+     be cleaned from files that do not exist any more in the filesystem.
+     You can use dupfinder -g 
 	   later to generate scripts for moving the duplicates to an archive 
-	   folder. So if you have a picture or video with 2 diffenrent names or 
+	   folder. So if you have a picture or video with 2 different names or 
 	   in different folders, you can identify them and create an archive 
 	   script and a delete script.
 	   The delete script will only delete duplicates - one version of the
@@ -56,6 +58,7 @@ OPTIONS
 	   filehash database
 	-C Create duplicate files file from hash database
 	-D Show contents of duplicates file
+	-d Delete not existing files from filehash database
 	-f search root path for files and create plain files file (requires -r)
 	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
@@ -269,6 +272,39 @@ function deleteAllDatabases() {
 	deleteFilehashDatabase
 	deleteFilelistDatabase
 	deleteDuplicatesDatabase
+}
+
+
+function deleteNotExistingFilesFromFileHashDatabase() {
+  logInfo "Searching filehash database for not existing files..."
+  [ -f "${FILEHASH_DB}" ] || {
+    logInfo "Filehash database not found: ${FILEHASH_DB}"
+    return
+  }
+  echo > "${FILEHASH_DB_TMP}"
+  LINENR=0
+  MISSING_FILES_FOUND=0
+  while read LINE; do
+    LINENR=$(($LINENR+1))
+    [ "${LINE}" == "" ] && continue
+    CURRENTFILENAME="`echo "${LINE}"|sed -s 's/^[^ ]* //g'|sed -s 's/^ //g'`"
+##    CURRENTHASH="`echo "${LINE}"|cut -d ' ' -f1`"
+#    echo "<${CURRENTFILENAME}>"
+#    echo ${CURRENTHASH}
+#    [ -f "${CURRENTFILENAME}" ] || {
+#      echo "${CURRENTFILENAME} not found (line: ${LINENR})."
+#      MISSING_FILES_FOUND=$(($MISSING_FILES_FOUND+1))
+#    } 
+    if [ -f "${CURRENTFILENAME}" ]; then 
+      echo "${LINE}" >> ${FILEHASH_DB_TMP}
+    else 
+      logInfo "${CURRENTFILENAME} not found (line: ${LINENR})."
+      MISSING_FILES_FOUND=$(($MISSING_FILES_FOUND+1))
+    fi 
+  done < $FILEHASH_DB
+  logInfo "Found $MISSING_FILES_FOUND not existing files in filehash database."
+  logInfo "Deleting $MISSING_FILES_FOUND not existing files from filehash database..."
+  mv ${FILEHASH_DB_TMP} ${FILEHASH_DB}
 }
 
 function calculateHashesForPlainfilesFileIntoFileHashDatabase() {
@@ -587,7 +623,7 @@ checkDependencies || {
 touchDBFiles
 
 ARGUMENTS_EXIST=0
-while getopts "acCDfghHLnNpr:RsvV" options; do
+while getopts "acCDdfghHLnNpr:RsvV" options; do
 	ARGUMENTS_EXIST=1
 	case "$options" in
 		a) ACTION="SEARCH_PATH_FOR_DUPLICATES"
@@ -603,6 +639,9 @@ while getopts "acCDfghHLnNpr:RsvV" options; do
 		   DEBUG=1
 		   ;;
 		D) showContentsOfDuplicatesFile
+		   exit 0
+		   ;;
+		d) deleteNotExistingFilesFromFileHashDatabase
 		   exit 0
 		   ;;
 		f) ACTION="FIND_FILES_AND_CREATE_PLAIN_FILE_LIST"
@@ -655,6 +694,7 @@ fi
 case "${ACTION}" in
 	SEARCH_PATH_FOR_DUPLICATES)
 		exitIfRootPathIsNotSet
+    deleteNotExistingFilesFromFileHashDatabase
 		createPlainFileList ${ROOT_PATH}
 		calculateHashesForPlainfilesFileIntoFileHashDatabase
 		createDuplicateFilelist
@@ -662,7 +702,7 @@ case "${ACTION}" in
 		showStats
 		exit 0
 		;;
-        SHOW_STATISTICS)
+  SHOW_STATISTICS)
 		showStats
 		exit 0
 		;;

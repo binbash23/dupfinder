@@ -22,9 +22,11 @@ OPTIONS
 
 	-a Search in path for duplicates (requires -r to set the root path). 
 	   This option scans the root path for files, creates hashes for them 
-	   and searches for duplicate files. You can use dupfinder -g 
+	   and searches for duplicate files. The filehash database will also
+     be cleaned from files that do not exist any more in the filesystem.
+     You can use dupfinder -g 
 	   later to generate scripts for moving the duplicates to an archive 
-	   folder. So if you have a picture or video with 2 diffenrent names or 
+	   folder. So if you have a picture or video with 2 different names or 
 	   in different folders, you can identify them and create an archive 
 	   script and a delete script.
 	   The delete script will only delete duplicates - one version of the
@@ -33,6 +35,7 @@ OPTIONS
 	   filehash database
 	-C Create duplicate files file from hash database
 	-D Show contents of duplicates file
+	-d Delete not existing files from filehash database
 	-f search root path for files and create plain files file (requires -r)
 	-g Generate scripts to copy duplicates and to delete duplicates
 	-h Show usage information
