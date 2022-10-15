@@ -16,9 +16,10 @@ DUPLICATE_FILES_ARCHIVE_FOLDER="duplicates"
 COPY_DUPLICATES_SCRIPT="copy_dups_from_root_path_to_archive.sh"
 DELETE_DUPLICATES_FROM_ROOT_SCRIPT="delete_dups_from_root_path.sh"
 ROOT_PATH=""
-HASH_CMD="md5sum"
+#HASH_CMD="md5sum"
+HASH_CMD="sha1sum"
 DEBUG=0
-VERSION=202206282205
+VERSION=202208221230
 RECALC_EXISTING_HASHES="0"
 SKIP_CALCULATING_FILESIZES="0"
 USAGE_INFO_TEXT="
@@ -385,7 +386,10 @@ function createDuplicateFilelist() {
 	echo -n "Hashes processed: "
 	tput sc 2>/dev/null
 	while read line;do
-		grep ${line} ${FILEHASH_DB} | cut -c35-|tail -n+2 >> ${DUPLICATES_DB}
+    # NOTE: depending on the length of the hash algorithm I cut the hash away
+		# md5sum: grep ${line} ${FILEHASH_DB} | cut -c35-|tail -n+2 >> ${DUPLICATES_DB}
+		# sha1sum:
+		grep ${line} ${FILEHASH_DB} | cut -c43-|tail -n+2 >> ${DUPLICATES_DB}
 		HASHES_PROCESSED=$((${HASHES_PROCESSED} + 1))
 		echo -n "${HASHES_PROCESSED}/${HASHES_TO_SEARCH}"
 		tput rc 2>/dev/null
